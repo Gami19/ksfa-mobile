@@ -1,0 +1,12 @@
+{
+  "name": "KSFA Mobile",
+  "short_name": "KSFA",
+  "description": "Kumamoto Smart Factory Aid - 現場作業員用モバイルアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#ffffff",
+  "orientation": "portrait",
+  "icons": []
+}
+
