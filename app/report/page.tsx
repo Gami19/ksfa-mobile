@@ -303,18 +303,33 @@ export default function ReportPage() {
           )}
         </div>
 
-        {/* 常時表示される録音ボタン - シームレスな入力 */}
-        <div className="fixed bottom-24 left-0 right-0 z-40 px-6" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {/* 常時表示される録音ボタン - 控えめなデザイン */}
+        <div className="fixed bottom-20 right-6 z-40" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
           <button
             onClick={() => setShowRecordModal(true)}
-            className="w-full relative rounded-3xl bg-gradient-to-r from-red-600 to-red-500 text-white shadow-2xl glow-red-sm hover:glow-red active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-3 py-4 group"
+            className="relative group"
           >
-            <div className="relative">
-              <Mic className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
-              <div className="absolute inset-0 bg-white/30 rounded-full animate-ping" />
+            {/* メインボタン - グラスモーフィズム */}
+            <div className="glass-enhanced rounded-2xl shadow-lg border border-white/60 p-3 active:scale-95 transition-all duration-300 hover:shadow-xl">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600/20 to-red-500/10 flex items-center justify-center border border-red-600/20">
+                    <Mic className="w-5 h-5 text-red-600 group-hover:scale-110 transition-transform duration-300" />
+                  </div>
+                  {/* 控えめなパルス効果 */}
+                  <div className="absolute inset-0 bg-red-600/10 rounded-xl animate-pulse opacity-50" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700 pr-2 hidden sm:block">
+                  音声入力
+                </span>
+              </div>
             </div>
-            <span className="font-black text-lg">音声で日報を追加</span>
-            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            
+            {/* ホバー時のツールチップ風テキスト */}
+            <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-lg glass-enhanced border border-white/50 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+              <span className="text-xs font-semibold text-slate-700">音声で日報を追加</span>
+              <div className="absolute top-full right-4 w-2 h-2 bg-white/70 backdrop-blur-md border-r border-b border-white/50 transform rotate-45 -mt-1" />
+            </div>
           </button>
         </div>
       </div>
@@ -494,7 +509,8 @@ export default function ReportPage() {
         </div>
       )}
 
-      <BottomNav />
+      {/* モーダルが表示されていない時のみBottomNavを表示 */}
+      {!selectedEntry && !showRecordModal && <BottomNav />}
     </AppShell>
   );
 }
