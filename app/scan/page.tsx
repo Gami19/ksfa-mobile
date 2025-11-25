@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import BottomNav from "@/components/ui/BottomNav";
 import { IS_DEMO_MODE } from "@/lib/config";
-import { Loader2 } from "lucide-react";
+import { Loader2, Camera } from "lucide-react";
 
 export default function ScanPage() {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -240,12 +240,15 @@ export default function ScanPage() {
                 </div>
               </div>
 
-              {/* タップ指示 - より洗練されたデザイン */}
-              <div className="absolute bottom-24 left-0 right-0 text-center animate-fade-in-up pointer-events-none">
-                <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full glass-enhanced backdrop-blur-md border border-white/20">
-                  <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-                  <p className="text-white/90 text-sm font-semibold">画面をタップして撮影</p>
-                </div>
+              {/* カメラアイコンボタン */}
+              <div className="absolute bottom-24 left-0 right-0 flex justify-center animate-fade-in-up pointer-events-none">
+                <button
+                  onClick={handleCapture}
+                  className="pointer-events-auto w-20 h-20 rounded-full glass-enhanced backdrop-blur-md border-2 border-white/30 flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 group"
+                >
+                  <div className="absolute inset-0 rounded-full bg-red-600/20 blur-xl group-hover:bg-red-600/30 transition-colors" />
+                  <Camera className="w-10 h-10 text-white relative z-10 drop-shadow-lg" />
+                </button>
               </div>
             </div>
           )}
