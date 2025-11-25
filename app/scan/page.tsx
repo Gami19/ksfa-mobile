@@ -202,7 +202,6 @@ export default function ScanPage() {
                 playsInline
                 muted
                 className="absolute inset-0 w-full h-full object-cover"
-                style={{ transform: "scaleX(-1)" }} // ミラー表示
               />
 
               {/* HUD オーバーレイ - より洗練されたデザイン */}
