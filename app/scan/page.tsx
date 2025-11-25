@@ -159,10 +159,10 @@ export default function ScanPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col h-full pb-24">
+      <div className="flex flex-col h-full pb-24 min-h-0">
         {/* ヘッダー */}
         <div 
-          className="p-6 animate-fade-in-up" 
+          className="p-6 flex-shrink-0 animate-fade-in-up" 
           style={{ 
             paddingTop: "calc(1.5rem + env(safe-area-inset-top))",
             animationDelay: "100ms",
@@ -175,10 +175,10 @@ export default function ScanPage() {
         </div>
 
         {/* カメラビューエリア */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative min-h-0 overflow-hidden">
           {cameraError ? (
             // カメラエラー表示
-            <div className="w-full h-full bg-gradient-to-b from-black via-slate-900 to-black flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-b from-black via-slate-900 to-black flex items-center justify-center">
               <div className="text-center px-6 space-y-4">
                 <p className="text-white/70 text-sm">{cameraError}</p>
                 <button
@@ -192,7 +192,7 @@ export default function ScanPage() {
           ) : (
             // カメラビュー + HUDオーバーレイ
             <div 
-              className="w-full h-full bg-black flex items-center justify-center relative overflow-hidden"
+              className="absolute inset-0 bg-black flex items-center justify-center overflow-hidden"
               onClick={handleCapture}
             >
               {/* カメラ映像 */}
@@ -201,7 +201,7 @@ export default function ScanPage() {
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
                 style={{ transform: "scaleX(-1)" }} // ミラー表示
               />
 
