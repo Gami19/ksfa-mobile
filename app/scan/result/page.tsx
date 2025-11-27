@@ -42,7 +42,7 @@ export default function ScanResultPage() {
 
     try {
       // localStorageからuser_idを取得
-      let userInfo = getUserInfo();
+      const userInfo = getUserInfo();
       if (!userInfo || !userInfo.user_id) {
         setSaveError('ユーザー情報が見つかりません。設定画面から再度お名前を入力してください。');
         setIsSaving(false);

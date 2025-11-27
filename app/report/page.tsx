@@ -4,8 +4,8 @@ import { useState, useMemo } from "react";
 import AppShell from "@/components/layout/AppShell";
 import BottomNav from "@/components/ui/BottomNav";
 import GlassCard from "@/components/ui/GlassCard";
-import { Mic, Plus, X, Send, Calendar, Clock, Tag, ChevronRight, Sparkles } from "lucide-react";
-import { IS_DEMO_MODE } from "@/lib/config";
+import { Mic, X, Send, Calendar, Clock, Tag, ChevronRight, Sparkles } from "lucide-react";
+import { isDemoMode } from "@/lib/config";
 import type { ReportEntry, GroupedReports } from "@/lib/types/report";
 
 export default function ReportPage() {
@@ -133,7 +133,7 @@ export default function ReportPage() {
   };
 
   const handleStartRecording = () => {
-    if (IS_DEMO_MODE) {
+    if (isDemoMode()) {
       // デモモード: 録音せず、「話したふり」をして固定テキストを入力
       setIsRecording(true);
       setTimeout(() => {
@@ -154,7 +154,7 @@ export default function ReportPage() {
   const handleSend = () => {
     if (transcript.trim()) {
       // デモモード: 新しいエントリーを追加（実際はAPIコール）
-      if (IS_DEMO_MODE) {
+      if (isDemoMode()) {
         const newEntry: ReportEntry = {
           id: Date.now().toString(),
           date: new Date().toISOString().split("T")[0],
@@ -354,7 +354,7 @@ export default function ReportPage() {
               </button>
             </div>
 
-            {IS_DEMO_MODE ? (
+            {isDemoMode() ? (
               // デモモード: 録音せず、「話したふり」をして固定テキストを入力
               <div className="space-y-5">
                 <div className="bg-gradient-to-br from-slate-50 to-white rounded-3xl p-6 min-h-[200px] border border-slate-200/50 shadow-inner">

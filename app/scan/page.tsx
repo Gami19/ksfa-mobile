@@ -20,7 +20,6 @@ interface ScanResult {
 }
 
 export default function ScanPage() {
-  const [isCapturing, setIsCapturing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -112,8 +111,9 @@ export default function ScanPage() {
         });
         streamRef.current = null;
       }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
+      const videoElement = videoRef.current;
+      if (videoElement) {
+        videoElement.srcObject = null;
       }
     };
   }, []);
@@ -121,7 +121,6 @@ export default function ScanPage() {
   const handleCapture = async () => {
     if (isDemoMode()) {
       // デモモード: 即座に撮影完了として解析開始
-      setIsCapturing(false);
       setIsAnalyzing(true);
       
       // 3秒間の解析中アニメーション
@@ -170,7 +169,6 @@ export default function ScanPage() {
       }, 3000);
     } else {
       // 本番モード: 実際のカメラ撮影とGemini API解析
-      setIsCapturing(true);
       
       try {
         // ビデオから画像をキャプチャ
@@ -242,7 +240,6 @@ export default function ScanPage() {
         }
       } catch (error) {
         console.error('Error capturing and analyzing image:', error);
-        setIsCapturing(false);
         setIsAnalyzing(false);
         
         // エラーメッセージに応じた処理
