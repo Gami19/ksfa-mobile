@@ -4,8 +4,20 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import BottomNav from "@/components/ui/BottomNav";
-import { IS_DEMO_MODE } from "@/lib/config";
+import { isDemoMode } from "@/lib/config";
+import { analyzeQualityWithGemini } from "@/app/actions/gemini";
 import { Loader2, Camera } from "lucide-react";
+
+const SCAN_RESULT_STORAGE_KEY = 'scan-result-data';
+
+interface ScanResult {
+  status: 'OK' | 'NG' | 'WARNING';
+  message: string;
+  details?: string[];
+  photo_url?: string;
+  ai_confidence?: number;
+  ai_comment?: string;
+}
 
 export default function ScanPage() {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -106,21 +118,148 @@ export default function ScanPage() {
     };
   }, []);
 
-  const handleCapture = () => {
-    if (IS_DEMO_MODE) {
+  const handleCapture = async () => {
+    if (isDemoMode()) {
       // デモモード: 即座に撮影完了として解析開始
       setIsCapturing(false);
       setIsAnalyzing(true);
       
       // 3秒間の解析中アニメーション
       setTimeout(() => {
-        setIsAnalyzing(false);
-        router.push("/scan/result");
+        // デモ用のスキャン結果を生成（NG判定）
+        const demoResult: ScanResult = {
+          status: 'NG',
+          message: '品質チェックに失敗しました',
+          details: [
+            '表面に傷が検出されました',
+            '寸法が基準値を外れています',
+          ],
+          ai_confidence: 0.85,
+          ai_comment: '表面に傷が検出されました。寸法が基準値を外れています。',
+        };
+
+        // sessionStorageに保存
+        try {
+          const resultJson = JSON.stringify(demoResult);
+          console.log('[Scan] sessionStorageに保存しようとしています。キー:', SCAN_RESULT_STORAGE_KEY);
+          console.log('[Scan] 保存するデータ:', demoResult);
+          
+          sessionStorage.setItem(SCAN_RESULT_STORAGE_KEY, resultJson);
+          
+          // 少し待ってから確認（sessionStorageの非同期処理を考慮）
+          setTimeout(() => {
+            const verifyData = sessionStorage.getItem(SCAN_RESULT_STORAGE_KEY);
+            if (verifyData === resultJson) {
+              console.log('[Scan] スキャン結果をsessionStorageに保存しました（確認済み）');
+              console.log('[Scan] 保存されたデータの長さ:', verifyData.length);
+              setIsAnalyzing(false);
+              // 保存を確認してから遷移
+              router.push("/scan/result");
+            } else {
+              console.error('[Scan] sessionStorageへの保存の確認に失敗しました');
+              console.error('[Scan] 期待値:', resultJson.length, '実際の値:', verifyData?.length || 0);
+              setIsAnalyzing(false);
+              setCameraError('データの保存に失敗しました。もう一度お試しください。');
+            }
+          }, 100);
+        } catch (err) {
+          console.error('[Scan] sessionStorageへの保存エラー:', err);
+          setIsAnalyzing(false);
+          setCameraError('データの保存中にエラーが発生しました。もう一度お試しください。');
+        }
       }, 3000);
     } else {
-      // 実装時: 実際のカメラ撮影処理
+      // 本番モード: 実際のカメラ撮影とGemini API解析
       setIsCapturing(true);
-      // TODO: カメラ撮影処理
+      
+      try {
+        // ビデオから画像をキャプチャ
+        const video = videoRef.current;
+        if (!video) {
+          throw new Error('Video element not found');
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('Canvas context not available');
+        }
+
+        ctx.drawImage(video, 0, 0);
+        // Base64データURLを取得（data:image/jpeg;base64,...形式）
+        const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+        // カメラストリームを停止
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => {
+            track.stop();
+          });
+          streamRef.current = null;
+        }
+
+        setIsAnalyzing(true);
+
+        // Gemini APIで画像解析
+        const analysisResult = await analyzeQualityWithGemini(photoDataUrl);
+
+        // スキャン結果を生成
+        const result: ScanResult = {
+          status: analysisResult.status,
+          message: analysisResult.status === 'OK' 
+            ? '品質チェックに合格しました' 
+            : analysisResult.status === 'WARNING'
+            ? '軽微な問題が検出されました'
+            : '品質チェックに失敗しました',
+          details: analysisResult.details || [],
+          photo_url: photoDataUrl, // 実際の実装ではStorageにアップロードしたURLを使用
+          ai_confidence: analysisResult.confidence,
+          ai_comment: analysisResult.comment,
+        };
+
+        // sessionStorageに保存
+        try {
+          const resultJson = JSON.stringify(result);
+          sessionStorage.setItem(SCAN_RESULT_STORAGE_KEY, resultJson);
+          
+          // 保存が完了したことを確認
+          const verifyData = sessionStorage.getItem(SCAN_RESULT_STORAGE_KEY);
+          if (verifyData === resultJson) {
+            console.log('[Scan] スキャン結果をsessionStorageに保存しました（確認済み）');
+            setIsAnalyzing(false);
+            // 保存を確認してから遷移
+            router.push("/scan/result");
+          } else {
+            console.error('[Scan] sessionStorageへの保存の確認に失敗しました');
+            setIsAnalyzing(false);
+            setCameraError('データの保存に失敗しました。もう一度お試しください。');
+          }
+        } catch (err) {
+          console.error('[Scan] sessionStorageへの保存エラー:', err);
+          setIsAnalyzing(false);
+          setCameraError('データの保存中にエラーが発生しました。もう一度お試しください。');
+        }
+      } catch (error) {
+        console.error('Error capturing and analyzing image:', error);
+        setIsCapturing(false);
+        setIsAnalyzing(false);
+        
+        // エラーメッセージに応じた処理
+        let errorMessage = '画像解析中にエラーが発生しました。もう一度お試しください。';
+        
+        if (error instanceof Error) {
+          if (error.message.includes('利用回数制限')) {
+            errorMessage = '本日のAPI利用回数制限に達しました。しばらく時間をおいてからお試しください。';
+          } else if (error.message.includes('GEMINI_API_KEY') || error.message.includes('API設定')) {
+            errorMessage = 'API設定エラーが発生しました。管理者に連絡してください。';
+          } else {
+            errorMessage = `解析エラー: ${error.message}`;
+          }
+        }
+        
+        setCameraError(errorMessage);
+      }
     }
   };
 

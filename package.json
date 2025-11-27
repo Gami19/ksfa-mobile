@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack -H 0.0.0.0",
-    "dev:local": "next dev --turbopack",
+    "dev": "next dev --turbopack -H 0.0.0.0 -p 4000",
+    "dev:local": "next dev --turbopack -p 4000",
     "build": "next build --turbopack",
-    "start": "next start",
+    "start": "next start -p 4000",
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/genai": "^1.30.0",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.85.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.554.0",
     "next": "15.5.6",
