@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import BottomNav from "@/components/ui/BottomNav";
@@ -8,7 +8,9 @@ import GlassCard from "@/components/ui/GlassCard";
 import { XCircle, CheckCircle, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { createInspectionLog } from "@/app/actions/inspection";
+import { getDefaultPartId } from "@/app/actions/parts";
 import { isDemoMode } from "@/lib/config";
+import { getUserInfo, clearUserInfo } from "@/lib/user-storage";
 
 const SCAN_RESULT_STORAGE_KEY = 'scan-result-data';
 
@@ -26,11 +28,122 @@ export default function ScanResultPage() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [isSaving, setIsSaving] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const hasProcessedRef = useRef(false); // 重複処理防止用
+  const isSavingRef = useRef(false); // 保存中フラグ
+
+  const saveInspectionLog = useCallback(async (scanResult: ScanResult) => {
+    // 重複実行防止: 既に保存処理中の場合はスキップ
+    if (isSavingRef.current) {
+      console.warn('[ScanResult] 保存処理が既に実行中のため、重複実行をスキップします。');
+      return;
+    }
+
+    isSavingRef.current = true;
+
+    try {
+      // localStorageからuser_idを取得
+      let userInfo = getUserInfo();
+      if (!userInfo || !userInfo.user_id) {
+        setSaveError('ユーザー情報が見つかりません。設定画面から再度お名前を入力してください。');
+        setIsSaving(false);
+        isSavingRef.current = false;
+        return;
+      }
+
+      // user_idがusersテーブルに存在するか確認
+      const { verifyUser } = await import('@/app/actions/user');
+      const userExists = await verifyUser(userInfo.user_id);
+      
+      if (!userExists) {
+        // ユーザーが存在しない場合、localStorageをクリアしてsetupページにリダイレクト
+        console.warn('[ScanResult] user_idが存在しないため、ユーザー情報をクリアします:', userInfo.user_id);
+        clearUserInfo();
+        setSaveError('ユーザー情報が無効です。設定画面から再度お名前を入力してください。');
+        setIsSaving(false);
+        isSavingRef.current = false;
+        // setupページにリダイレクト
+        setTimeout(() => {
+          router.push('/setup');
+        }, 2000);
+        return;
+      }
+
+      // part_idを取得（parts_masterから最初の1件、存在しない場合はデフォルトを作成）
+      const part_id = await getDefaultPartId();
+      if (!part_id) {
+        setSaveError('部品情報の取得に失敗しました。データベースの設定を確認してください。');
+        setIsSaving(false);
+        isSavingRef.current = false;
+        return;
+      }
+
+      console.log('[ScanResult] DB保存処理を開始 - user_id:', userInfo.user_id, 'part_id:', part_id);
+
+      const saveResult = await createInspectionLog({
+        user_id: userInfo.user_id,
+        part_id,
+        status: scanResult.status,
+        ai_confidence: scanResult.ai_confidence ?? null,
+        photo_url: scanResult.photo_url ?? null,
+        ai_comment: scanResult.ai_comment ?? scanResult.message,
+      });
+
+      if (!saveResult.success) {
+        setSaveError(saveResult.error || 'データの保存に失敗しました。');
+      } else {
+        console.log('[ScanResult] DB保存成功 - inspection_log_id:', saveResult.inspection_log_id);
+      }
+
+      // sessionStorageをクリア
+      sessionStorage.removeItem(SCAN_RESULT_STORAGE_KEY);
+      setIsSaving(false);
+      isSavingRef.current = false;
+    } catch (error) {
+      console.error('Error saving inspection log:', error);
+      setSaveError('データの保存中にエラーが発生しました。');
+      setIsSaving(false);
+      isSavingRef.current = false;
+    }
+  }, [router]);
+
+  // processScanResult関数をuseCallbackで定義（デモモードからも呼び出せるように）
+  const processScanResult = useCallback((savedData: string) => {
+    try {
+      console.log('[ScanResult] データのパースを開始');
+      const scanResult: ScanResult = JSON.parse(savedData);
+      console.log('[ScanResult] データのパース成功:', scanResult);
+      
+      setResult(scanResult);
+
+      // DB保存処理を実行（デモモードでも実行）
+      console.log('[ScanResult] DB保存処理を開始');
+      saveInspectionLog(scanResult);
+    } catch (error) {
+      console.error('[ScanResult] データのパースエラー:', error);
+      console.error('[ScanResult] パースしようとしたデータ:', savedData?.substring(0, 200));
+      
+      if (error instanceof SyntaxError) {
+        setSaveError('スキャン結果データの形式が正しくありません。スキャン画面から再度お試しください。');
+      } else {
+        setSaveError('スキャン結果データの処理中にエラーが発生しました。もう一度お試しください。');
+      }
+      setIsSaving(false);
+    }
+  }, [saveInspectionLog]);
 
   useEffect(() => {
+    // 重複処理防止: 既に処理済みの場合はスキップ（React Strict Mode対策）
+    if (hasProcessedRef.current) {
+      console.log('[ScanResult] 既に処理済みのため、重複実行をスキップします。');
+      return;
+    }
+
     // デモモードの場合は、sessionStorageに依存せずにデモデータを直接使用
+    // ただし、DB保存は実行する（デモモードでもデータを保存）
     if (isDemoMode()) {
       console.log('[ScanResult] デモモード: デモデータを直接使用');
+      hasProcessedRef.current = true; // 処理済みフラグを設定
+      
       const demoResult: ScanResult = {
         status: 'NG',
         message: '品質チェックに失敗しました',
@@ -42,7 +155,9 @@ export default function ScanResultPage() {
         ai_comment: '表面に傷が検出されました。寸法が基準値を外れています。',
       };
       setResult(demoResult);
-      setIsSaving(false);
+      
+      // デモモードでもDB保存を実行
+      processScanResult(JSON.stringify(demoResult));
       return;
     }
 
@@ -80,66 +195,14 @@ export default function ScanResultPage() {
       }
       
       // データが見つかった場合の処理を続行
+      hasProcessedRef.current = true; // 処理済みフラグを設定
       processScanResult(savedData);
     };
     
     // 本番モードの場合のみsessionStorageから取得を試行
     fetchScanResult();
-    
-    const processScanResult = (savedData: string) => {
-      try {
-        console.log('[ScanResult] データのパースを開始');
-        const scanResult: ScanResult = JSON.parse(savedData);
-        console.log('[ScanResult] データのパース成功:', scanResult);
-        
-        setResult(scanResult);
-
-        // 本番モードの場合のみDB保存処理を実行
-        console.log('[ScanResult] DB保存処理を開始');
-        saveInspectionLog(scanResult);
-      } catch (error) {
-        console.error('[ScanResult] データのパースエラー:', error);
-        console.error('[ScanResult] パースしようとしたデータ:', savedData?.substring(0, 200));
-        
-        if (error instanceof SyntaxError) {
-          setSaveError('スキャン結果データの形式が正しくありません。スキャン画面から再度お試しください。');
-        } else {
-          setSaveError('スキャン結果データの処理中にエラーが発生しました。もう一度お試しください。');
-        }
-        setIsSaving(false);
-      }
-    };
-  }, []);
-
-  const saveInspectionLog = async (scanResult: ScanResult) => {
-    try {
-      // TODO: 実際のuser_idとpart_idを取得する処理を実装
-      // 現時点ではデモ用の固定値を使用
-      const user_id = '00000000-0000-0000-0000-000000000001'; // デモ用の固定user_id
-      const part_id = '00000000-0000-0000-0000-000000000001'; // デモ用の固定part_id
-
-      const saveResult = await createInspectionLog({
-        user_id,
-        part_id,
-        status: scanResult.status,
-        ai_confidence: scanResult.ai_confidence ?? null,
-        photo_url: scanResult.photo_url ?? null,
-        ai_comment: scanResult.ai_comment ?? scanResult.message,
-      });
-
-      if (!saveResult.success) {
-        setSaveError(saveResult.error || 'データの保存に失敗しました。');
-      }
-
-      // sessionStorageをクリア
-      sessionStorage.removeItem(SCAN_RESULT_STORAGE_KEY);
-      setIsSaving(false);
-    } catch (error) {
-      console.error('Error saving inspection log:', error);
-      setSaveError('データの保存中にエラーが発生しました。');
-      setIsSaving(false);
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 依存配列を空にして、初回マウント時のみ実行
 
   // データ取得中または保存中の場合はローディング表示
   if (isSaving) {

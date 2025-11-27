@@ -152,9 +152,9 @@ export default function ScanPage() {
             if (verifyData === resultJson) {
               console.log('[Scan] スキャン結果をsessionStorageに保存しました（確認済み）');
               console.log('[Scan] 保存されたデータの長さ:', verifyData.length);
-              setIsAnalyzing(false);
+        setIsAnalyzing(false);
               // 保存を確認してから遷移
-              router.push("/scan/result");
+        router.push("/scan/result");
             } else {
               console.error('[Scan] sessionStorageへの保存の確認に失敗しました');
               console.error('[Scan] 期待値:', resultJson.length, '実際の値:', verifyData?.length || 0);
