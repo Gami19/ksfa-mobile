@@ -78,6 +78,7 @@ export default function ScanResultPage() {
       }
 
       console.log('[ScanResult] DB保存処理を開始 - user_id:', userInfo.user_id, 'part_id:', part_id);
+      console.log('[ScanResult] スキャン結果ステータス:', scanResult.status);
 
       const saveResult = await createInspectionLog({
         user_id: userInfo.user_id,
@@ -88,10 +89,46 @@ export default function ScanResultPage() {
         ai_comment: scanResult.ai_comment ?? scanResult.message,
       });
 
+      console.log('[ScanResult] DB保存結果:', {
+        success: saveResult.success,
+        inspection_log_id: saveResult.inspection_log_id,
+        alert_id: saveResult.alert_id,
+        alert_chat_id: saveResult.alert_chat_id,
+        ai_learning_data_id: saveResult.ai_learning_data_id,
+      });
+
       if (!saveResult.success) {
         setSaveError(saveResult.error || 'データの保存に失敗しました。');
       } else {
         console.log('[ScanResult] DB保存成功 - inspection_log_id:', saveResult.inspection_log_id);
+        
+        // アラートが作成された場合のログ
+        if (saveResult.alert_id) {
+          console.log('[ScanResult] アラートが作成されました - alert_id:', saveResult.alert_id);
+          console.log('[ScanResult] Dashboardにリアルタイム通知が送信されるはずです');
+          if (saveResult.alert_chat_id) {
+            console.log('[ScanResult] alert_chat_id:', saveResult.alert_chat_id);
+          }
+          if (saveResult.ai_learning_data_id) {
+            console.log('[ScanResult] ai_learning_data_id:', saveResult.ai_learning_data_id);
+          }
+        } else if (scanResult.status === 'NG') {
+          console.warn('[ScanResult] statusがNGですが、アラートが作成されませんでした');
+        }
+        
+        // StorageにアップロードされたURLがある場合は、表示用のresultを更新
+        if (saveResult.photo_url && saveResult.photo_url !== scanResult.photo_url) {
+          console.log('[ScanResult] StorageにアップロードされたURLで画像を更新:', saveResult.photo_url);
+          setResult((prevResult) => {
+            if (prevResult) {
+              return {
+                ...prevResult,
+                photo_url: saveResult.photo_url || prevResult.photo_url,
+              };
+            }
+            return prevResult;
+          });
+        }
       }
 
       // sessionStorageをクリア

@@ -18,6 +18,7 @@ export interface CreateInspectionLogResult {
   alert_id?: string
   alert_chat_id?: string
   ai_learning_data_id?: string
+  photo_url?: string | null // Storageにアップロード後のURL（Base64データURLの場合はアップロード後のURL、既にURLの場合はそのまま）
   error?: string
 }
 
@@ -70,12 +71,24 @@ export async function createInspectionLog(
 
     // 2. statusが'NG'の場合はalertsテーブルにもデータを作成
     if (params.status === 'NG') {
+      console.log('[InspectionLog] statusがNGのため、アラートを作成します')
+      
       // AIコメントまたは詳細情報からタイトルを生成
       const alertTitle = params.ai_comment 
         ? params.ai_comment.length > 50 
           ? params.ai_comment.substring(0, 50) + '...'
           : params.ai_comment
         : '品質チェックに失敗しました'
+
+      console.log('[InspectionLog] アラートタイトル:', alertTitle)
+      console.log('[InspectionLog] アラート作成パラメータ:', {
+        user_id: params.user_id,
+        inspection_log_id: inspection_log_id,
+        title: alertTitle,
+        severity: 'Medium',
+        status: 'Open',
+        photo_url: finalPhotoUrl ? 'あり' : 'なし',
+      })
 
       const { data: alert, error: alertError } = await supabase
         .from('alerts')
@@ -91,7 +104,7 @@ export async function createInspectionLog(
         .single()
 
       if (alertError) {
-        console.error('Error creating alert:', alertError)
+        console.error('[InspectionLog] アラート作成エラー:', alertError)
         // アラート作成に失敗しても検査ログは作成済みなので、警告として返す
         return {
           success: true,
@@ -101,6 +114,7 @@ export async function createInspectionLog(
       }
 
       const alert_id = alert.id
+      console.log('[InspectionLog] アラート作成成功 - alert_id:', alert_id)
       let alert_chat_id: string | undefined
       let ai_learning_data_id: string | undefined
 
@@ -147,18 +161,29 @@ export async function createInspectionLog(
         console.log('[InspectionLog] ai_learning_dataを作成しました:', ai_learning_data_id)
       }
 
+      console.log('[InspectionLog] アラート作成処理完了:', {
+        inspection_log_id,
+        alert_id,
+        alert_chat_id,
+        ai_learning_data_id,
+        photo_url: finalPhotoUrl,
+      })
+
       return {
         success: true,
         inspection_log_id,
         alert_id,
         alert_chat_id,
         ai_learning_data_id,
+        photo_url: finalPhotoUrl,
       }
     }
 
+    console.log('[InspectionLog] statusがOK/WARNINGのため、アラートは作成しません')
     return {
       success: true,
       inspection_log_id,
+      photo_url: finalPhotoUrl,
     }
   } catch (error) {
     console.error('Unexpected error in createInspectionLog:', error)
