@@ -117,13 +117,15 @@ export default function ScanResultPage() {
         }
         
         // StorageにアップロードされたURLがある場合は、表示用のresultを更新
-        if (saveResult.photo_url && saveResult.photo_url !== scanResult.photo_url) {
-          console.log('[ScanResult] StorageにアップロードされたURLで画像を更新:', saveResult.photo_url);
+        // アップロード後のURLがあればそれを使い、なければ元のBase64データURLを使う
+        const finalPhotoUrl = saveResult.photo_url || scanResult.photo_url;
+        if (finalPhotoUrl) {
+          console.log('[ScanResult] 表示用の画像URLを更新:', finalPhotoUrl);
           setResult((prevResult) => {
             if (prevResult) {
               return {
                 ...prevResult,
-                photo_url: saveResult.photo_url || prevResult.photo_url,
+                photo_url: finalPhotoUrl,
               };
             }
             return prevResult;
