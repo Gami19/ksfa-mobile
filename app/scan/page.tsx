@@ -105,13 +105,16 @@ export default function ScanPage() {
     // クリーンアップ: コンポーネントアンマウント時にカメラストリームを停止
     return () => {
       isMounted = false;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => {
+      const stream = streamRef.current;
+      const videoElement = videoRef.current;
+      
+      if (stream) {
+        stream.getTracks().forEach((track) => {
           track.stop();
         });
         streamRef.current = null;
       }
-      const videoElement = videoRef.current;
+      
       if (videoElement) {
         videoElement.srcObject = null;
       }

@@ -353,6 +353,7 @@ export default function ScanResultPage() {
                 撮影画像
               </h3>
               <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/20 bg-slate-100/50 shadow-inner">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={result.photo_url}
                   alt="スキャン画像"

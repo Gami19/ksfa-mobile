@@ -112,10 +112,11 @@ export async function uploadPhotoToStorage(
       
       // RLSポリシーエラーの場合
       const errorMessage = uploadError.message || String(uploadError)
+      const errorWithStatus = uploadError as { status?: number }
       if (errorMessage.includes('row-level security') || 
           errorMessage.includes('RLS') ||
           errorMessage.includes('403') ||
-          (uploadError as any).status === 403) {
+          errorWithStatus?.status === 403) {
         console.error('[Storage] RLSポリシーエラー: Supabase StorageバケットのRLSポリシーを確認してください')
         console.error('[Storage] 解決方法: Supabaseダッシュボードで、Storage > inspection-photos バケットのRLSポリシーを設定してください')
       }

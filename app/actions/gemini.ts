@@ -180,7 +180,7 @@ export async function analyzeQualityWithGemini(
         
         // 503エラー（モデル過負荷）または429エラー（レート制限）をチェック
         const errorMessage = lastError.message.toLowerCase()
-        const errorObj = error as any
+        const errorObj = error as { error?: { code?: number }; code?: number }
         
         const is503Error = errorMessage.includes('503') || 
                            errorMessage.includes('overloaded') || 
