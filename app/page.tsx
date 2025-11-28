@@ -1,12 +1,56 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import BottomNav from "@/components/ui/BottomNav";
 import GlassCard from "@/components/ui/GlassCard";
-import { User, ScanLine, Sparkles, Package, FileText } from "lucide-react";
+import { User, ScanLine, Sparkles, Package, FileText, Settings } from "lucide-react";
 import Link from "next/link";
+import { getUserInfo, hasUserInfo } from "@/lib/user-storage";
 
 export default function Home() {
+  const router = useRouter();
+  const [userInfo, setUserInfo] = useState<{ user_id: string; name: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // ユーザー情報が存在しない場合はsetupページにリダイレクト
+    if (!hasUserInfo()) {
+      router.push("/setup");
+      return;
+    }
+
+    // ユーザー情報を取得
+    const info = getUserInfo();
+    if (info) {
+      setUserInfo(info);
+    } else {
+      router.push("/setup");
+    }
+    setIsLoading(false);
+  }, [router]);
+
+  // 作業者IDの表示用（user_idの短縮版）
+  const getWorkerId = (userId: string) => {
+    // UUIDの最初の8文字を使用、または連番に変換
+    return `OP-${userId.substring(0, 8).toUpperCase()}`;
+  };
+
+  // ローディング中またはユーザー情報がない場合は何も表示しない
+  if (isLoading || !userInfo) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <Sparkles className="w-8 h-8 text-red-600 animate-pulse mx-auto mb-2" />
+            <p className="text-sm text-slate-500 font-medium">読み込み中...</p>
+          </div>
+        </div>
+        <BottomNav />
+      </AppShell>
+    );
+  }
   return (
     <AppShell>
       <div className="flex flex-col h-full pb-24">
@@ -41,10 +85,20 @@ export default function Home() {
                 </div>
                 <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-600 rounded-full border-2 border-white animate-pulse" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 flex items-center justify-between">
+                <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">作業者ID</p>
-                <p className="text-2xl font-black font-mono text-slate-900 mb-0.5 tracking-tight">OP-001</p>
-                <p className="text-xs text-slate-600 font-medium">山田 太郎</p>
+                  <p className="text-2xl font-black font-mono text-slate-900 mb-0.5 tracking-tight">
+                    {getWorkerId(userInfo.user_id)}
+                  </p>
+                  <p className="text-xs text-slate-600 font-medium">{userInfo.name}</p>
+                </div>
+                <Link 
+                  href="/setup"
+                  className="p-2 rounded-xl bg-white/50 backdrop-blur-sm border border-white/50 hover:bg-white/70 transition-colors"
+                >
+                  <Settings className="w-5 h-5 text-slate-600" />
+                </Link>
               </div>
             </div>
           </GlassCard>
