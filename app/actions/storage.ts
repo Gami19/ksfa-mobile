@@ -1,6 +1,7 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 
 /**
  * Base64データURLをBlobに変換
@@ -82,7 +83,21 @@ export async function uploadPhotoToStorage(
 
     console.log('[Storage] アップロードを開始します - バケット:', bucketName, 'ファイル名:', finalFileName)
 
-    const supabase = await createClient()
+    // Service Role Keyを使用してStorageにアクセス（RLSポリシーをバイパス）
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl) {
+      console.error('[Storage] SUPABASE_URL環境変数が設定されていません')
+      return null
+    }
+
+    // Service Role Keyが設定されている場合はそれを使用（RLSポリシーをバイパス）
+    // 設定されていない場合は、通常のサーバークライアントを使用
+    // （RLSポリシーが適切に設定されている必要がある）
+    const supabase = supabaseServiceRoleKey
+      ? createSupabaseClient(supabaseUrl, supabaseServiceRoleKey)
+      : await createServerClient()
 
     // Supabase Storageにアップロード
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -94,6 +109,17 @@ export async function uploadPhotoToStorage(
 
     if (uploadError) {
       console.error('[Storage] アップロードエラー:', uploadError)
+      
+      // RLSポリシーエラーの場合
+      const errorMessage = uploadError.message || String(uploadError)
+      if (errorMessage.includes('row-level security') || 
+          errorMessage.includes('RLS') ||
+          errorMessage.includes('403') ||
+          (uploadError as any).status === 403) {
+        console.error('[Storage] RLSポリシーエラー: Supabase StorageバケットのRLSポリシーを確認してください')
+        console.error('[Storage] 解決方法: Supabaseダッシュボードで、Storage > inspection-photos バケットのRLSポリシーを設定してください')
+      }
+      
       return null
     }
 

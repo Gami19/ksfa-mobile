@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import BottomNav from "@/components/ui/BottomNav";
 import GlassCard from "@/components/ui/GlassCard";
-import { XCircle, CheckCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { XCircle, CheckCircle, ArrowLeft, Loader2, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { createInspectionLog } from "@/app/actions/inspection";
 import { getDefaultPartId } from "@/app/actions/parts";
@@ -144,6 +144,9 @@ export default function ScanResultPage() {
       console.log('[ScanResult] デモモード: デモデータを直接使用');
       hasProcessedRef.current = true; // 処理済みフラグを設定
       
+      // デモ用のプレースホルダー画像（Base64データURL）
+      const demoImageUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPuOBk+OCk+ODoeODu+OCpOODq+ODqeOCpDwvdGV4dD48L3N2Zz4=';
+      
       const demoResult: ScanResult = {
         status: 'NG',
         message: '品質チェックに失敗しました',
@@ -151,6 +154,7 @@ export default function ScanResultPage() {
           '表面に傷が検出されました',
           '寸法が基準値を外れています',
         ],
+        photo_url: demoImageUrl,
         ai_confidence: 0.85,
         ai_comment: '表面に傷が検出されました。寸法が基準値を外れています。',
       };
@@ -341,16 +345,33 @@ export default function ScanResultPage() {
             </div>
           </GlassCard>
 
+          {/* 撮影画像 */}
+          {result.photo_url && (
+            <GlassCard variant="enhanced" delay={300} className="p-6">
+              <h3 className="text-lg font-black text-slate-800 mb-4 tracking-tight flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-slate-600" />
+                撮影画像
+              </h3>
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/20 bg-slate-100/50 shadow-inner">
+                <img
+                  src={result.photo_url}
+                  alt="スキャン画像"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </GlassCard>
+          )}
+
           {/* 詳細情報 */}
           {result.details && result.details.length > 0 && (
-            <GlassCard variant="enhanced" delay={300} className="p-6">
+            <GlassCard variant="enhanced" delay={400} className="p-6">
               <h3 className="text-lg font-black text-slate-800 mb-5 tracking-tight">詳細情報</h3>
               <ul className="space-y-3">
                 {result.details.map((detail, index) => (
                   <li 
                     key={index} 
                     className="flex items-start gap-3 animate-fade-in-up"
-                    style={{ animationDelay: `${400 + index * 100}ms` }}
+                    style={{ animationDelay: `${500 + index * 100}ms` }}
                   >
                     <div className="w-6 h-6 rounded-full bg-red-600/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="text-red-600 text-xs font-bold">•</span>

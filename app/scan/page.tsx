@@ -248,6 +248,8 @@ export default function ScanPage() {
         if (error instanceof Error) {
           if (error.message.includes('利用回数制限')) {
             errorMessage = '本日のAPI利用回数制限に達しました。しばらく時間をおいてからお試しください。';
+          } else if (error.message.includes('過負荷') || error.message.includes('503')) {
+            errorMessage = 'AIサーバーが現在混雑しています。しばらく時間をおいてから再度お試しください。';
           } else if (error.message.includes('GEMINI_API_KEY') || error.message.includes('API設定')) {
             errorMessage = 'API設定エラーが発生しました。管理者に連絡してください。';
           } else {
